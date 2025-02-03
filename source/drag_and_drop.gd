@@ -11,8 +11,9 @@ var ZOOM_MAX   := 3.0
 var ZOOM_SPEED := 0.2
 
 var USE_STABILISATION   := true
+var USE_STARTING_ANGLE  := false
 var STABILISATION_SPEED := 7.5
-var STABILISATION_ANGLE := Vector3.ONE * PI/6
+var STABILISATION_ANGLE := Vector3(.2, 1, 0)
 
 var DRAG_OFFSET := Vector3.ZERO
 
@@ -87,6 +88,12 @@ func get_drag_velocity(
 	var drag_pos = get_drag_position(distance, offset, raycast)
 	return (drag_pos - object.global_position) * delta * force
 
+func get_default_angle(object = drag_object) -> Vector3:
+	if USE_STARTING_ANGLE and object:
+		return object.rotation
+	
+	return STABILISATION_ANGLE
+
 # SETTERS
 
 func set_drag_distance(distance:float) -> float:
@@ -100,7 +107,7 @@ func set_drag_object(object:Node3D) -> Node3D:
 	drag_object = object
 	return drag_object
 
-func set_drag_angle(angle:Vector3 = STABILISATION_ANGLE) -> Vector3:
+func set_drag_angle(angle:Vector3 = get_default_angle()) -> Vector3:
 	drag_angle = angle
 	return drag_angle
 
@@ -123,7 +130,7 @@ func set_using_force(
 func start_dragging(
 		object:Node3D = get_draggable_aimed(),
 		distance:float = get_collision_distance(),
-		angle:Vector3 = STABILISATION_ANGLE,
+		angle:Vector3 = get_default_angle(object),
 		use_force:bool = USE_FORCE,
 	) -> bool:
 	if not object:
