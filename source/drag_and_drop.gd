@@ -1,9 +1,12 @@
 extends Node3D
 
-var DRAG_SPEED := 8.0
+var DRAG_SPEED := 12.0
 
+# Will use linear velocity (FORCE) instead of position changing (SPEED),
+# when possible, to avoid objects clipping and allow for tossing
 var USE_FORCE  := true
-var DRAG_FORCE := 320.0
+var DRAG_FORCE := 350.0
+var RELEASE_VELOCITY_MULTIPLIER := 0.8
 
 var USE_ZOOM   := true
 var ZOOM_MIN   := 0.75
@@ -12,8 +15,8 @@ var ZOOM_SPEED := 0.2
 
 var USE_STABILISATION   := true
 var USE_STARTING_ANGLE  := false
-var STABILISATION_SPEED := 7.5
-var STABILISATION_ANGLE := Vector3(.2, 1, 0)
+var STABILISATION_SPEED := 5.0
+var STABILISATION_ANGLE := Vector3.ZERO
 
 var DRAG_OFFSET := Vector3.ZERO
 
@@ -154,6 +157,9 @@ func stop_dragging():
 		drag_object.sleeping = false
 		drag_object.freeze = !drag_unfreeze_after
 	
+	if drag_using_force:
+		drag_object.linear_velocity *= RELEASE_VELOCITY_MULTIPLIER
+	
 	drag_object = null
 
 func drag_by_setpos(
@@ -162,7 +168,7 @@ func drag_by_setpos(
 		object:Node3D = drag_object,
 	):
 	if not object:
-		return
+		return stop_dragging()
 	
 	object.global_position = object.global_position.lerp(
 		get_drag_position(), delta * speed
@@ -174,7 +180,7 @@ func drag_by_force(
 		object:RigidBody3D = drag_object
 	):
 	if not drag_object:
-		return
+		return stop_dragging()
 	
 	object.linear_velocity = get_drag_velocity(delta, force, object)
 	object.angular_velocity = Vector3.ZERO
