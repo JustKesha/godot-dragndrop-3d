@@ -1,6 +1,8 @@
-extends Node3D
+extends Node
 
-var DRAG_SPEED := 12.0
+var DRAG_SPEED  := 12.0
+var DRAG_OFFSET := Vector3.ZERO
+var ALLOW_INITIAL_OFFSET := false
 
 # Will use linear velocity (FORCE) instead of position changing (SPEED),
 # when possible, to avoid objects clipping and allow for tossing
@@ -18,8 +20,6 @@ var USE_STARTING_ANGLE  := false
 var STABILISATION_SPEED := 5.0
 var STABILISATION_ANGLE := Vector3.ZERO
 
-var DRAG_OFFSET := Vector3.ZERO
-
 const CONTROLS := {
 	# Values from Input map
 	"DRAG":     "drag",
@@ -32,8 +32,9 @@ const CONTROLS := {
 var drag_object:Node3D
 var drag_distance:float
 var drag_angle:Vector3
-var drag_using_force:bool
+var drag_use_force:bool
 var drag_unfreeze_after:bool
+var drag_offset:Vector3
 
 # HELPERS
 
@@ -68,7 +69,7 @@ func get_draggable_aimed(raycast:RayCast3D = drag_raycast) -> Node3D:
 
 func get_drag_position(
 		distance:float = drag_distance,
-		offset:Vector3 = DRAG_OFFSET,
+		offset:Vector3 = drag_offset,
 		raycast:RayCast3D = drag_raycast,
 	) -> Vector3:
 	if not raycast:
@@ -82,7 +83,7 @@ func get_drag_velocity(
 		force:float = DRAG_FORCE,
 		object:Node3D = drag_object,
 		distance:float = drag_distance,
-		offset:Vector3 = DRAG_OFFSET,
+		offset:Vector3 = drag_offset,
 		raycast:RayCast3D = drag_raycast,
 	) -> Vector3:
 	if not object or not raycast:
@@ -91,11 +92,23 @@ func get_drag_velocity(
 	var drag_pos = get_drag_position(distance, offset, raycast)
 	return (drag_pos - object.global_position) * delta * force
 
-func get_default_angle(object = drag_object) -> Vector3:
+func get_default_angle(object:Node3D = drag_object) -> Vector3:
 	if USE_STARTING_ANGLE and object:
 		return object.rotation
 	
 	return STABILISATION_ANGLE
+
+func get_object_offset(
+		object:Node3D = drag_object,
+		raycast:RayCast3D = drag_raycast,
+	) -> Vector3:
+	if not object or not raycast:
+		return Vector3.ZERO
+	
+	return object.global_position - raycast.get_collision_point()
+
+func get_drag_offset(object:Node3D) -> Vector3:
+	return DRAG_OFFSET + get_object_offset(object) if ALLOW_INITIAL_OFFSET else Vector3.ZERO
 
 # SETTERS
 
@@ -114,19 +127,23 @@ func set_drag_angle(angle:Vector3 = get_default_angle()) -> Vector3:
 	drag_angle = angle
 	return drag_angle
 
-func set_using_force(
+func set_drag_offset(offset:Vector3) -> Vector3:
+	drag_offset = offset
+	return drag_offset
+
+func set_use_force(
 		use_force:bool = USE_FORCE,
 		object:Node3D = drag_object
 	) -> bool:
 	var can_use_force = is_object_forcable(object)
 	
-	drag_using_force = can_use_force and use_force
+	drag_use_force = can_use_force and use_force
 	
 	if object is RigidBody3D:
-		object.freeze = !drag_using_force
+		object.freeze = !drag_use_force
 		drag_unfreeze_after = !object.freeze
 	
-	return drag_using_force
+	return drag_use_force
 
 # ACTIONS
 
@@ -134,6 +151,7 @@ func start_dragging(
 		object:Node3D = get_draggable_aimed(),
 		distance:float = get_collision_distance(),
 		angle:Vector3 = get_default_angle(object),
+		offset:Vector3 = DRAG_OFFSET + get_drag_offset(object),
 		use_force:bool = USE_FORCE,
 	) -> bool:
 	if not object:
@@ -145,7 +163,8 @@ func start_dragging(
 	set_drag_object(object)
 	set_drag_distance(distance)
 	set_drag_angle(angle)
-	set_using_force(use_force)
+	set_drag_offset(offset)
+	set_use_force(use_force)
 	
 	return true
 
@@ -157,7 +176,7 @@ func stop_dragging():
 		drag_object.sleeping = false
 		drag_object.freeze = !drag_unfreeze_after
 	
-	if drag_using_force:
+	if drag_use_force:
 		drag_object.linear_velocity *= RELEASE_VELOCITY_MULTIPLIER
 	
 	drag_object = null
@@ -189,10 +208,10 @@ func drag(
 		delta:float,
 		speed:float = DRAG_SPEED,
 		force:float = DRAG_FORCE,
-		use_force:bool = drag_using_force,
+		use_force:bool = drag_use_force,
 		object:Node3D = drag_object,
 	):
-	if drag_using_force:
+	if drag_use_force:
 		drag_by_force(delta, force, object)
 	else:
 		drag_by_setpos(delta, speed, object)
