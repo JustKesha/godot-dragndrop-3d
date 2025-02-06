@@ -4,6 +4,7 @@ var DRAG_SPEED    := 12.0
 var DRAG_OFFSET   := Vector3.ZERO
 var DRAG_COOLDOWN := 0.25
 var ALLOW_INITIAL_OFFSET := true
+var DRAGGABLE_METADATA   := 'draggable'
 
 # Will use linear velocity (FORCE) instead of position changing (SPEED),
 # when possible, to avoid objects clipping and allow for tossing
@@ -55,7 +56,7 @@ func wake_up(object:RigidBody3D):
 	object.apply_impulse(WAKE_UP_IMPULSE)
 
 func is_object_draggable(object) -> bool:
-	return object is Node3D
+	return object is Node3D and object.get_meta(DRAGGABLE_METADATA, false)
 
 func is_object_forcable(object) -> bool:
 	return object is RigidBody3D
