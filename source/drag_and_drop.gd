@@ -10,6 +10,9 @@ var ALLOW_INITIAL_OFFSET := true
 var USE_FORCE  := true
 var DRAG_FORCE := 350.0
 var RELEASE_VELOCITY_MULTIPLIER := 0.8
+var WAKE_UP_IMPULSE := Vector3.DOWN * .005
+# If your RigidBody objects fall asleep (freeze mid air),
+# Try changing this to a higher value
 
 var USE_ZOOM   := true
 var ZOOM_MIN   := 0.75
@@ -46,6 +49,10 @@ func get_collision_distance(raycast:RayCast3D = drag_raycast) -> float:
 		return -1
 	
 	return raycast.global_transform.origin.distance_to(raycast.get_collision_point())
+
+func wake_up(object:RigidBody3D):
+	# Changing .sleeping doesnt seem to work
+	object.apply_impulse(WAKE_UP_IMPULSE)
 
 func is_object_draggable(object) -> bool:
 	return object is Node3D
@@ -195,12 +202,12 @@ func stop_dragging():
 	if not drag_object:
 		return
 	
-	if drag_object is RigidBody3D:
-		drag_object.sleeping = false
-		drag_object.freeze = !drag_unfreeze_after
-	
 	if drag_use_force:
 		drag_object.linear_velocity *= RELEASE_VELOCITY_MULTIPLIER
+	
+	if drag_object is RigidBody3D:
+		drag_object.freeze = !drag_unfreeze_after
+		wake_up(drag_object)
 	
 	drag_object = null
 
