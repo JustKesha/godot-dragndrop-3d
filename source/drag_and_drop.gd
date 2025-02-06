@@ -3,8 +3,8 @@ extends Node
 var DRAG_SPEED    := 12.0
 var DRAG_OFFSET   := Vector3.ZERO
 var DRAG_COOLDOWN := 0.25
-var ALLOW_INITIAL_OFFSET := true
 var DRAGGABLE_METADATA   := 'draggable'
+var ALLOW_INITIAL_OFFSET := true
 
 # Will use linear velocity (FORCE) instead of position changing (SPEED),
 # when possible, to avoid objects clipping and allow for tossing
@@ -25,6 +25,8 @@ var USE_STARTING_ANGLE  := false
 var STABILISATION_SPEED := 5.0
 var STABILISATION_ANGLE := Vector3.ZERO
 
+var TRACK_HOVERING := true
+
 const CONTROLS := {
 	# Values from Input map
 	"DRAG":     "drag",
@@ -36,6 +38,7 @@ const CONTROLS := {
 @onready var drag_cooldown_timer:Timer = Timer.new()
 
 var drag_object:Node3D
+var drag_hovered:Node3D
 var drag_distance:float
 var drag_angle:Vector3
 var drag_use_force:bool
@@ -45,6 +48,8 @@ var drag_on_cooldown:bool
 
 signal started_dragging (object:Node3D)
 signal stopped_dragging (object:Node3D)
+signal draggable_hovered   (object:Node3D)
+signal draggable_unhovered (object:Node3D)
 
 # HELPERS
 
@@ -127,6 +132,12 @@ func get_drag_offset(object:Node3D) -> Vector3:
 func cooldown_clear():
 	set_on_cooldown(-1)
 
+func update_draggable_hovered(
+		condition:bool = TRACK_HOVERING and not drag_object
+	):
+	if condition:
+		set_draggable_hovered(get_draggable_aimed())
+
 # SETTERS
 
 func set_drag_distance(distance:float) -> float:
@@ -176,6 +187,20 @@ func set_on_cooldown(seconds:float = DRAG_COOLDOWN) -> float:
 	drag_on_cooldown = true
 	return seconds
 
+func set_draggable_hovered(new_value:Node3D):
+	var old_value = drag_hovered
+	
+	if old_value == new_value:
+		return
+	
+	drag_hovered = new_value
+	
+	if not new_value:
+		draggable_unhovered.emit(old_value)
+		return
+	
+	draggable_hovered.emit(new_value)
+
 # ACTIONS
 
 func start_dragging(
@@ -200,6 +225,9 @@ func start_dragging(
 	set_use_force(use_force)
 	set_on_cooldown(cooldown)
 	
+	if TRACK_HOVERING:
+		set_draggable_hovered(null)
+	
 	started_dragging.emit(drag_object)
 	
 	return true
@@ -218,6 +246,9 @@ func stop_dragging():
 	stopped_dragging.emit(drag_object)
 	
 	drag_object = null
+	
+	if TRACK_HOVERING:
+		update_draggable_hovered()
 
 func drag_by_setpos(
 		delta:float,
@@ -270,6 +301,10 @@ func stabilize(
 func _ready():
 	drag_cooldown_timer.timeout.connect(Callable(self, "_on_cooldown_timeout"))
 	add_child(drag_cooldown_timer)
+
+func _process(delta:float):
+	if TRACK_HOVERING:
+		update_draggable_hovered()
 
 func _physics_process(delta:float):
 	drag(delta)
