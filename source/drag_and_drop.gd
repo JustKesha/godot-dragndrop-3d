@@ -1,8 +1,9 @@
 extends Node
 
-var DRAG_SPEED  := 12.0
-var DRAG_OFFSET := Vector3.ZERO
-var ALLOW_INITIAL_OFFSET := false
+var DRAG_SPEED    := 12.0
+var DRAG_OFFSET   := Vector3.ZERO
+var DRAG_COOLDOWN := 0.25
+var ALLOW_INITIAL_OFFSET := true
 
 # Will use linear velocity (FORCE) instead of position changing (SPEED),
 # when possible, to avoid objects clipping and allow for tossing
@@ -28,6 +29,7 @@ const CONTROLS := {
 }
 
 @onready var drag_raycast:RayCast3D = $"."
+@onready var drag_cooldown_timer:Timer = Timer.new()
 
 var drag_object:Node3D
 var drag_distance:float
@@ -35,6 +37,7 @@ var drag_angle:Vector3
 var drag_use_force:bool
 var drag_unfreeze_after:bool
 var drag_offset:Vector3
+var drag_on_cooldown:bool
 
 # HELPERS
 
@@ -110,6 +113,9 @@ func get_object_offset(
 func get_drag_offset(object:Node3D) -> Vector3:
 	return DRAG_OFFSET + get_object_offset(object) if ALLOW_INITIAL_OFFSET else Vector3.ZERO
 
+func cooldown_clear():
+	set_on_cooldown(-1)
+
 # SETTERS
 
 func set_drag_distance(distance:float) -> float:
@@ -145,16 +151,32 @@ func set_use_force(
 	
 	return drag_use_force
 
+func set_on_cooldown(seconds:float = DRAG_COOLDOWN) -> float:
+	if not drag_cooldown_timer:
+		return -1
+	
+	if seconds <= 0:
+		drag_cooldown_timer.stop()
+		drag_on_cooldown = false
+		return 0
+	
+	drag_cooldown_timer.wait_time = seconds
+	drag_cooldown_timer.start()
+	drag_on_cooldown = true
+	return seconds
+
 # ACTIONS
 
 func start_dragging(
 		object:Node3D = get_draggable_aimed(),
+		ignore_cooldown:bool = false,
 		distance:float = get_collision_distance(),
 		angle:Vector3 = get_default_angle(object),
 		offset:Vector3 = DRAG_OFFSET + get_drag_offset(object),
 		use_force:bool = USE_FORCE,
+		cooldown:float = DRAG_COOLDOWN,
 	) -> bool:
-	if not object:
+	if not object or (drag_on_cooldown and not ignore_cooldown):
 		return false
 	
 	if drag_object:
@@ -165,6 +187,7 @@ func start_dragging(
 	set_drag_angle(angle)
 	set_drag_offset(offset)
 	set_use_force(use_force)
+	set_on_cooldown(cooldown)
 	
 	return true
 
@@ -229,6 +252,11 @@ func stabilize(
 
 # CONTROLS
 
+func _ready():
+	drag_cooldown_timer.timeout.connect(Callable(self, "_on_cooldown_timeout"))
+	add_child(drag_cooldown_timer)
+	drag_cooldown_timer.timeout.emit()
+
 func _unhandled_input(event:InputEvent):
 	if event.is_action_pressed(CONTROLS.DRAG):
 		start_dragging()
@@ -246,3 +274,6 @@ func _physics_process(delta:float):
 	drag(delta)
 	if USE_STABILISATION:
 		stabilize(delta)
+
+func _on_cooldown_timeout():
+	cooldown_clear()
