@@ -17,7 +17,7 @@ var WAKE_UP_IMPULSE := Vector3.DOWN * .005
 
 var USE_ZOOM   := true
 var ZOOM_MIN   := 0.75
-var ZOOM_MAX   := 3.0
+var ZOOM_MAX   := 2.25
 var ZOOM_SPEED := 0.2
 
 var USE_STABILISATION   := true
@@ -280,7 +280,7 @@ func drag(
 		use_force:bool = drag_use_force,
 		object:Node3D = drag_object,
 	):
-	if drag_use_force:
+	if use_force:
 		drag_by_force(delta, force, object)
 	else:
 		drag_by_setpos(delta, speed, object)
@@ -302,7 +302,7 @@ func _ready():
 	drag_cooldown_timer.timeout.connect(Callable(self, "_on_cooldown_timeout"))
 	add_child(drag_cooldown_timer)
 
-func _process(delta:float):
+func _process(_delta:float):
 	if TRACK_HOVERING:
 		update_draggable_hovered()
 
