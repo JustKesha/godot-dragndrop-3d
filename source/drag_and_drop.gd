@@ -43,6 +43,9 @@ var drag_unfreeze_after:bool
 var drag_offset:Vector3
 var drag_on_cooldown:bool
 
+signal started_dragging (object:Node3D)
+signal stopped_dragging (object:Node3D)
+
 # HELPERS
 
 func get_collision_distance(raycast:RayCast3D = drag_raycast) -> float:
@@ -197,6 +200,8 @@ func start_dragging(
 	set_use_force(use_force)
 	set_on_cooldown(cooldown)
 	
+	started_dragging.emit(drag_object)
+	
 	return true
 
 func stop_dragging():
@@ -209,6 +214,8 @@ func stop_dragging():
 	if drag_object is RigidBody3D:
 		drag_object.freeze = !drag_unfreeze_after
 		wake_up(drag_object)
+	
+	stopped_dragging.emit(drag_object)
 	
 	drag_object = null
 
@@ -263,7 +270,11 @@ func stabilize(
 func _ready():
 	drag_cooldown_timer.timeout.connect(Callable(self, "_on_cooldown_timeout"))
 	add_child(drag_cooldown_timer)
-	drag_cooldown_timer.timeout.emit()
+
+func _physics_process(delta:float):
+	drag(delta)
+	if USE_STABILISATION:
+		stabilize(delta)
 
 func _unhandled_input(event:InputEvent):
 	if event.is_action_pressed(CONTROLS.DRAG):
@@ -277,11 +288,6 @@ func _unhandled_input(event:InputEvent):
 		set_drag_distance(drag_distance - ZOOM_SPEED)
 	elif event.is_action_pressed(CONTROLS.ZOOM_OUT):
 		set_drag_distance(drag_distance + ZOOM_SPEED)
-
-func _physics_process(delta:float):
-	drag(delta)
-	if USE_STABILISATION:
-		stabilize(delta)
 
 func _on_cooldown_timeout():
 	cooldown_clear()
