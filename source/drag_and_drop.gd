@@ -77,8 +77,11 @@ func is_object_static(object) -> bool:
 	
 	return object.freeze
 
-func get_draggable_aimed(raycast:RayCast3D = drag_raycast) -> Node3D:
-	if not raycast:
+func get_draggable_aimed(
+		raycast:RayCast3D = drag_raycast,
+		ignore_cooldown:bool = false,
+	) -> Node3D:
+	if not raycast or (not ignore_cooldown and drag_on_cooldown):
 		return null
 	
 	var object_aimed = raycast.get_collider()
