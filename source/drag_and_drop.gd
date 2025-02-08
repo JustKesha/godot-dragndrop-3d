@@ -50,6 +50,8 @@ signal started_dragging (object:Node3D)
 signal stopped_dragging (object:Node3D)
 signal draggable_hovered   (object:Node3D)
 signal draggable_unhovered (object:Node3D)
+signal cooldown_timeset
+signal cooldown_timeout
 
 # HELPERS
 
@@ -180,11 +182,13 @@ func set_on_cooldown(seconds:float = DRAG_COOLDOWN) -> float:
 	if seconds <= 0:
 		drag_cooldown_timer.stop()
 		drag_on_cooldown = false
+		cooldown_timeout.emit()
 		return 0
 	
 	drag_cooldown_timer.wait_time = seconds
 	drag_cooldown_timer.start()
 	drag_on_cooldown = true
+	cooldown_timeset.emit()
 	return seconds
 
 func set_draggable_hovered(new_value:Node3D):
