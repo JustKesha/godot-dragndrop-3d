@@ -1,5 +1,6 @@
 extends Node
 
+var DRAG_TOGGLE   := true
 var DRAG_SPEED    := 12.0
 var DRAG_OFFSET   := Vector3.ZERO
 var DRAG_COOLDOWN := 0.25
@@ -319,10 +320,17 @@ func _physics_process(delta:float):
 		stabilize(delta)
 
 func _unhandled_input(event:InputEvent):
-	if event.is_action_pressed(CONTROLS.DRAG):
-		start_dragging()
-	elif event.is_action_released(CONTROLS.DRAG):
-		stop_dragging()
+	if DRAG_TOGGLE:
+		if event.is_action_pressed(CONTROLS.DRAG):
+			if drag_object:
+				stop_dragging()
+			else:
+				start_dragging()
+	else:
+		if event.is_action_pressed(CONTROLS.DRAG):
+			start_dragging()
+		elif event.is_action_released(CONTROLS.DRAG):
+			stop_dragging()
 	
 	if not USE_ZOOM:
 		return
