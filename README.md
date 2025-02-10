@@ -10,7 +10,7 @@
 
 ## Overview
 
-This is a handy & highly customizable script for Godot 4 and higher written in GD Script that implements 3D drag and drop mechanics using RayCast3D.
+This is a powerful and highly customizable script for Godot 4 and higher written in GDScript that implements 3D drag and drop mechanics using RayCast3D.
 
 ### Features
 Here are some of the main features:
