@@ -18,7 +18,7 @@ Here are some of the main features:
 - Zoom in and out on objects
 - Rotate in any directions `Soon`
 - Hold & toggle modes
-- Throwing & tossing `Soon`
+- Throwing & tossing
 - Snap to surfaces `Soon`
 - Set up cooldowns
 
