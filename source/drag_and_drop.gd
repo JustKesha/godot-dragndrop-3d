@@ -27,7 +27,7 @@ const CONTROLS := {
 	"ZOOM_OUT": "zoom_out",
 }
 
-# Will use linear velocity (VELOCITY) instead of position changing (SPEED),
+# Will use linear velocity (FORCE) instead of position changing (SPEED),
 # for RigidBody objects, to avoid clipping and allow for tossing
 var USE_VELOCITY := true
 var DRAG_FORCE := 350.0
@@ -35,16 +35,20 @@ var RELEASE_VELOCITY_MULT := Vector3.ONE * .8
 var WAKE_UP_VELOCITY := Vector3.UP * .35
 
 var ALLOW_THROW := true
-var THROW_SPEED := 12
+var DROP_IF_CANT_THROW := true
+var USE_MAX_THROW_SPEED := false
+var THROW_SPEED_MIN := 2
+var THROW_SPEED_MAX := 8
+var THROW_CHARGE_TIME := 1.0
+var THROW_WHEN_CHARGED := true
 var THROW_OFFSET := Vector3.UP * .1
 var USE_RANDOM_ANGLE := true
-var ANGULAR_FORCE := THROW_SPEED / 2.25
-var DROP_IF_CANT_THROW := true
+var ANGULAR_FORCE := 4
 
 # Only works when using force
 var TRACK_JAMMING := true
-var JAM_RESPONSE := JAM_RESPONSES.NONE
-var JAM_MIN_DISTANCE := .2
+var JAM_RESPONSE := JAM_RESPONSES.LOWER_DISTANCE
+var JAM_MIN_DISTANCE := .25
 var JAM_MIN_TIME := .1
 var JAM_ZONE_RADIUS := .1
 
@@ -56,6 +60,7 @@ var JAM_LOWER_DISTANCE_FAIL := JAM_RESPONSES.TELEPORT_CLOSE
 @onready var drag_raycast:RayCast3D = $"."
 @onready var drag_cooldown_timer:Timer = Timer.new()
 @onready var drag_jam_timer:Timer = Timer.new()
+@onready var throw_charge_timer:Timer = Timer.new()
 
 enum JAM_RESPONSES {
 	NONE = -1,
@@ -72,6 +77,10 @@ signal draggable_unhovered (object:Node3D)
 signal cooldown_timeset
 signal cooldown_timeout
 signal jammed
+signal thrown
+signal throw_charge_started
+signal throw_charge_stopped
+signal throw_charge_full
 
 var drag_object:Node3D
 var drag_hovered:Node3D
@@ -83,6 +92,7 @@ var drag_offset:Vector3
 var drag_on_cooldown:bool
 var drag_jam_point:Vector3
 var drag_suspecting_jam:bool
+var throw_charging:bool
 
 # HELPERS
 
@@ -242,6 +252,28 @@ func jam_check():
 
 func get_random_angle(min:float = -1, max:float = 1) -> Vector3:
 	return Vector3(randf_range(min, max), randf_range(min, max), randf_range(min, max))
+
+func get_throw_charge_time() -> float:
+	if not throw_charging or not throw_charge_timer:
+		return 0
+	
+	return THROW_CHARGE_TIME - throw_charge_timer.time_left
+
+func get_throw_speed(
+		min:float = THROW_SPEED_MIN,
+		max:float = THROW_SPEED_MAX,
+		use_max:bool = USE_MAX_THROW_SPEED,
+		charge_time:float = get_throw_charge_time(),
+		full_charge_time:float = THROW_CHARGE_TIME,
+		is_being_charged:bool = throw_charging,
+	) -> float:
+	if use_max:
+		return max
+	
+	if not is_being_charged:
+		return 0
+	
+	return min + charge_time * (max-min) / full_charge_time
 
 # SETTERS
 
@@ -405,13 +437,17 @@ func stabilize(
 
 func throw(
 		object:Node3D = drag_object,
-		speed:float = THROW_SPEED,
+		speed:float = get_throw_speed(),
 		direction:Vector3 = get_raycast_forward() + THROW_OFFSET,
 		angular_speed:float = ANGULAR_FORCE,
-		angle:Vector3 = get_random_angle() if USE_RANDOM_ANGLE else Vector3.ZERO
+		angle:Vector3 = get_random_angle() if USE_RANDOM_ANGLE else Vector3.ZERO,
+		was_charging:bool = throw_charging,
 	):
 	if not object:
 		return
+	
+	if was_charging:
+		stop_throw_charing()
 	
 	if not is_object_forcable(object):
 		if DROP_IF_CANT_THROW:
@@ -423,6 +459,26 @@ func throw(
 	
 	object.linear_velocity += direction * speed
 	object.angular_velocity += angle * angular_speed
+	
+	thrown.emit()
+
+func start_throw_charging(full_charge_time:float = THROW_CHARGE_TIME):
+	if not drag_object:
+		return
+	
+	throw_charge_timer.wait_time = full_charge_time
+	throw_charge_timer.start()
+	
+	throw_charging = true
+	
+	throw_charge_started.emit()
+
+func stop_throw_charing():
+	throw_charge_timer.stop()
+	
+	throw_charging = false
+	
+	throw_charge_stopped.emit()
 
 # CONTROLS
 
@@ -430,9 +486,14 @@ func _ready():
 	drag_cooldown_timer.one_shot = true
 	drag_cooldown_timer.timeout.connect(Callable(self, "_on_cooldown_timeout"))
 	add_child(drag_cooldown_timer)
+	
 	drag_jam_timer.one_shot = true
 	drag_jam_timer.timeout.connect(Callable(self, "_on_jam_timeout"))
 	add_child(drag_jam_timer)
+	
+	throw_charge_timer.one_shot = true
+	throw_charge_timer.timeout.connect(Callable(self, "_on_throw_fully_charged"))
+	add_child(throw_charge_timer)
 
 func _process(_delta:float):
 	if TRACK_HOVERING:
@@ -458,8 +519,15 @@ func _unhandled_input(event:InputEvent):
 		elif event.is_action_released(CONTROLS.DRAG):
 			stop_dragging()
 	
-	if ALLOW_THROW and event.is_action_pressed(CONTROLS.THROW):
-		throw()
+	if ALLOW_THROW:
+		if event.is_action_pressed(CONTROLS.THROW):
+			if USE_MAX_THROW_SPEED:
+				throw()
+			else:
+				start_throw_charging()
+		elif event.is_action_released(CONTROLS.THROW):
+			if not USE_MAX_THROW_SPEED:
+				throw()
 	
 	if USE_ZOOM:
 		if event.is_action_pressed(CONTROLS.ZOOM_IN):
@@ -475,3 +543,8 @@ func _on_jam_timeout():
 		handle_jam()
 	else:
 		drag_suspecting_jam = false
+
+func _on_throw_fully_charged():
+	throw_charge_full.emit()
+	if THROW_WHEN_CHARGED:
+		throw()
