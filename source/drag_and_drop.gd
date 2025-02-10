@@ -22,6 +22,7 @@ var TRACK_HOVERING := true
 # Values from input map
 const CONTROLS := {
 	"DRAG": "drag",
+	"THROW": "throw",
 	"ZOOM_IN": "zoom_in",
 	"ZOOM_OUT": "zoom_out",
 }
@@ -29,9 +30,14 @@ const CONTROLS := {
 # Will use linear velocity (VELOCITY) instead of position changing (SPEED),
 # for RigidBody objects, to avoid clipping and allow for tossing
 var USE_VELOCITY := true
-var DRAG_VELOCITY := Vector3.ONE * 350.0
+var DRAG_FORCE := 350.0
 var RELEASE_VELOCITY_MULT := Vector3.ONE * .8
 var WAKE_UP_VELOCITY := Vector3.UP * .35
+
+var ALLOW_THROW := true
+var THROW_SPEED := 12
+var THROW_OFFSET := Vector3.UP * .1
+var DROP_IF_CANT_THROW := true
 
 # Only works when using force
 var TRACK_JAMMING := true
@@ -114,6 +120,9 @@ func get_draggable_aimed(
 	
 	return null
 
+func get_raycast_forward(raycast:RayCast3D = drag_raycast) -> Vector3:
+	return -raycast.get_global_transform().basis.z
+
 func get_drag_position(
 		distance:float = drag_distance,
 		offset:Vector3 = drag_offset,
@@ -122,12 +131,11 @@ func get_drag_position(
 	if not raycast:
 		return Vector3.ZERO
 	
-	var forward = -raycast.get_global_transform().basis.z
-	return raycast.global_position + forward * distance + offset
+	return raycast.global_position + offset + get_raycast_forward() * distance
 
 func get_drag_velocity(
 		delta:float,
-		force:Vector3 = DRAG_VELOCITY,
+		force:float = DRAG_FORCE,
 		object:Node3D = drag_object,
 		distance:float = drag_distance,
 		offset:Vector3 = drag_offset,
@@ -356,9 +364,9 @@ func drag_by_setpos(
 		get_drag_position(), delta * speed
 	)
 
-func drag_by_force(
+func drag_by_velocity(
 		delta:float,
-		force:Vector3 = DRAG_VELOCITY,
+		force:float = DRAG_FORCE,
 		object:RigidBody3D = drag_object
 	):
 	if not drag_object:
@@ -370,12 +378,12 @@ func drag_by_force(
 func drag(
 		delta:float,
 		speed:float = DRAG_SPEED,
-		force:Vector3 = DRAG_VELOCITY,
+		force:float = DRAG_FORCE,
 		use_velocity:bool = drag_use_velocity,
 		object:Node3D = drag_object,
 	):
 	if use_velocity:
-		drag_by_force(delta, force, object)
+		drag_by_velocity(delta, force, object)
 	else:
 		drag_by_setpos(delta, speed, object)
 
@@ -389,6 +397,24 @@ func stabilize(
 		return
 	
 	object.rotation = object.rotation.lerp(angle, delta * speed)
+
+func throw(
+		object:Node3D = drag_object,
+		speed:float = THROW_SPEED,
+		direction:Vector3 = get_raycast_forward() + THROW_OFFSET
+	):
+	if not object:
+		return
+	
+	if not is_object_forcable(object):
+		if DROP_IF_CANT_THROW:
+			stop_dragging()
+		return
+	
+	if object == drag_object:
+		stop_dragging()
+	
+	object.linear_velocity += direction * speed
 
 # CONTROLS
 
@@ -424,12 +450,14 @@ func _unhandled_input(event:InputEvent):
 		elif event.is_action_released(CONTROLS.DRAG):
 			stop_dragging()
 	
-	if not USE_ZOOM:
-		return
-	if event.is_action_pressed(CONTROLS.ZOOM_IN):
-		set_drag_distance(drag_distance - ZOOM_SPEED)
-	elif event.is_action_pressed(CONTROLS.ZOOM_OUT):
-		set_drag_distance(drag_distance + ZOOM_SPEED)
+	if ALLOW_THROW and event.is_action_pressed(CONTROLS.THROW):
+		throw()
+	
+	if USE_ZOOM:
+		if event.is_action_pressed(CONTROLS.ZOOM_IN):
+			set_drag_distance(drag_distance - ZOOM_SPEED)
+		elif event.is_action_pressed(CONTROLS.ZOOM_OUT):
+			set_drag_distance(drag_distance + ZOOM_SPEED)
 
 func _on_cooldown_timeout():
 	cooldown_clear()
