@@ -37,6 +37,8 @@ var WAKE_UP_VELOCITY := Vector3.UP * .35
 var ALLOW_THROW := true
 var THROW_SPEED := 12
 var THROW_OFFSET := Vector3.UP * .1
+var USE_RANDOM_ANGLE := true
+var ANGULAR_FORCE := THROW_SPEED / 2.25
 var DROP_IF_CANT_THROW := true
 
 # Only works when using force
@@ -238,6 +240,9 @@ func jam_check():
 	if is_jam_distance_reached():
 		suspect_jam()
 
+func get_random_angle(min:float = -1, max:float = 1) -> Vector3:
+	return Vector3(randf_range(min, max), randf_range(min, max), randf_range(min, max))
+
 # SETTERS
 
 func set_drag_distance(distance:float) -> float:
@@ -401,7 +406,9 @@ func stabilize(
 func throw(
 		object:Node3D = drag_object,
 		speed:float = THROW_SPEED,
-		direction:Vector3 = get_raycast_forward() + THROW_OFFSET
+		direction:Vector3 = get_raycast_forward() + THROW_OFFSET,
+		angular_speed:float = ANGULAR_FORCE,
+		angle:Vector3 = get_random_angle() if USE_RANDOM_ANGLE else Vector3.ZERO
 	):
 	if not object:
 		return
@@ -415,6 +422,7 @@ func throw(
 		stop_dragging()
 	
 	object.linear_velocity += direction * speed
+	object.angular_velocity += angle * angular_speed
 
 # CONTROLS
 
