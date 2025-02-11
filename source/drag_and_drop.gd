@@ -35,15 +35,15 @@ var RELEASE_VELOCITY_MULT := Vector3.ONE * .8
 var WAKE_UP_VELOCITY := Vector3.UP * .35
 
 var ALLOW_THROW := true
-var DROP_IF_CANT_THROW := true
-var USE_MAX_THROW_SPEED := false
-var THROW_SPEED_MIN := 2
+var CHARGE_THROW := true
+var THROW_SPEED_MIN := 0
 var THROW_SPEED_MAX := 8
 var THROW_CHARGE_TIME := 1.0
 var THROW_WHEN_CHARGED := true
 var THROW_OFFSET := Vector3.UP * .1
 var USE_RANDOM_ANGLE := true
-var ANGULAR_FORCE := 4
+var ANGULAR_FORCE := 3
+var DROP_IF_CANT_THROW := true
 
 # Only works when using force
 var TRACK_JAMMING := true
@@ -262,12 +262,12 @@ func get_throw_charge_time() -> float:
 func get_throw_speed(
 		min:float = THROW_SPEED_MIN,
 		max:float = THROW_SPEED_MAX,
-		use_max:bool = USE_MAX_THROW_SPEED,
+		charge:bool = CHARGE_THROW,
 		charge_time:float = get_throw_charge_time(),
 		full_charge_time:float = THROW_CHARGE_TIME,
 		is_being_charged:bool = throw_charging,
 	) -> float:
-	if use_max:
+	if not charge:
 		return max
 	
 	if not is_being_charged:
@@ -463,9 +463,6 @@ func throw(
 	thrown.emit()
 
 func start_throw_charging(full_charge_time:float = THROW_CHARGE_TIME):
-	if not drag_object:
-		return
-	
 	throw_charge_timer.wait_time = full_charge_time
 	throw_charge_timer.start()
 	
@@ -507,33 +504,57 @@ func _physics_process(delta:float):
 		jam_check()
 
 func _unhandled_input(event:InputEvent):
+	var DRAGGING = drag_object
+	var DRAG_DOWN = event.is_action_pressed(CONTROLS.DRAG)
+	var DRAG_UP = event.is_action_released(CONTROLS.DRAG)
+	var THROW_DOWN = event.is_action_pressed(CONTROLS.THROW)
+	var THROW_UP = event.is_action_released(CONTROLS.THROW)
+	var ZOOM_IN = event.is_action_pressed(CONTROLS.ZOOM_IN)
+	var ZOOM_OUT = event.is_action_pressed(CONTROLS.ZOOM_OUT)
+	var CHARGING = get_throw_charge_time()
+	
+	if not ALLOW_THROW:
+		THROW_DOWN = false
+		THROW_UP = false
+	
 	if DRAG_TOGGLE:
-		if event.is_action_pressed(CONTROLS.DRAG):
-			if drag_object:
-				stop_dragging()
+		if DRAGGING:
+			if THROW_DOWN:
+				if CHARGE_THROW:
+					if not CHARGING:
+						return start_throw_charging()
+				else:
+					return throw()
+			elif THROW_UP and CHARGE_THROW and (THROW_UP != DRAG_UP or CHARGING):
+				return throw()
+		
+		if DRAG_DOWN:
+			if DRAGGING:
+				return stop_dragging()
 			else:
 				start_dragging()
+		elif DRAG_UP:
+			return
 	else:
-		if event.is_action_pressed(CONTROLS.DRAG):
+		if THROW_UP and DRAGGING:
+			return throw()
+		
+		if DRAG_DOWN:
 			start_dragging()
-		elif event.is_action_released(CONTROLS.DRAG):
-			stop_dragging()
-	
-	if ALLOW_THROW:
-		if event.is_action_pressed(CONTROLS.THROW):
-			if USE_MAX_THROW_SPEED:
-				throw()
-			else:
-				start_throw_charging()
-		elif event.is_action_released(CONTROLS.THROW):
-			if not USE_MAX_THROW_SPEED:
-				throw()
+		elif DRAG_UP and DRAGGING:
+			return stop_dragging()
+		
+		if THROW_DOWN:
+			if CHARGE_THROW:
+				return start_throw_charging()
+			elif DRAGGING:
+				return throw()
 	
 	if USE_ZOOM:
-		if event.is_action_pressed(CONTROLS.ZOOM_IN):
-			set_drag_distance(drag_distance - ZOOM_SPEED)
-		elif event.is_action_pressed(CONTROLS.ZOOM_OUT):
-			set_drag_distance(drag_distance + ZOOM_SPEED)
+		if ZOOM_IN:
+			return set_drag_distance(drag_distance - ZOOM_SPEED)
+		elif ZOOM_OUT:
+			return set_drag_distance(drag_distance + ZOOM_SPEED)
 
 func _on_cooldown_timeout():
 	cooldown_clear()
