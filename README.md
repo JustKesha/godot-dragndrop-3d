@@ -26,4 +26,5 @@ There's also:
 - Smooth angle stabilisation
 - Five jam handling modes
 - Two drag modes: velocity & position setting
+- Can use a single key to control all drag, drop and throw actions
 - Many signals for you to use in other scripts
