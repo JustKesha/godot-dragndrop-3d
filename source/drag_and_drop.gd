@@ -27,6 +27,9 @@ const CONTROLS := {
 	"ZOOM_OUT": "zoom_out",
 }
 
+# Will use CONTROLS.DRAG action for both drag and throw interactions
+var SINGLE_ACTION_DRAG_AND_THROW := true
+
 # Will use linear velocity (FORCE) instead of position changing (SPEED),
 # for RigidBody objects, to avoid clipping and allow for tossing
 var USE_VELOCITY := true
@@ -504,11 +507,12 @@ func _physics_process(delta:float):
 		jam_check()
 
 func _unhandled_input(event:InputEvent):
+	var CONTROLS_THROW = CONTROLS.DRAG if SINGLE_ACTION_DRAG_AND_THROW else CONTROLS.THROW
 	var DRAGGING = drag_object
 	var DRAG_DOWN = event.is_action_pressed(CONTROLS.DRAG)
 	var DRAG_UP = event.is_action_released(CONTROLS.DRAG)
-	var THROW_DOWN = event.is_action_pressed(CONTROLS.THROW)
-	var THROW_UP = event.is_action_released(CONTROLS.THROW)
+	var THROW_DOWN = event.is_action_pressed(CONTROLS_THROW)
+	var THROW_UP = event.is_action_released(CONTROLS_THROW)
 	var ZOOM_IN = event.is_action_pressed(CONTROLS.ZOOM_IN)
 	var ZOOM_OUT = event.is_action_pressed(CONTROLS.ZOOM_OUT)
 	var CHARGING = get_throw_charge_time()
