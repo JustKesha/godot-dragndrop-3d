@@ -11,6 +11,8 @@ var USE_ZOOM := true
 var ZOOM_MIN := .75
 var ZOOM_MAX := 2.25
 var ZOOM_SPEED := .2
+var ZOOM_START := -1
+# -1 will use distance to object as initial zoom
 
 var USE_STABILISATION := true
 var USE_STARTING_ANGLE := false
@@ -105,6 +107,11 @@ func get_collision_distance(raycast:RayCast3D = drag_raycast) -> float:
 		return -1
 	
 	return raycast.global_transform.origin.distance_to(raycast.get_collision_point())
+
+func get_drag_distance(raycast:RayCast3D = drag_raycast) -> float:
+	if ZOOM_START <= -1:
+		return get_collision_distance(raycast)
+	return ZOOM_START
 
 func wake_up(object:RigidBody3D):
 	# Changing .sleeping doesnt seem to work
@@ -349,7 +356,7 @@ func set_draggable_hovered(new_value:Node3D):
 func start_dragging(
 		object:Node3D = get_draggable_aimed(),
 		ignore_cooldown:bool = false,
-		distance:float = get_collision_distance(),
+		distance:float = get_drag_distance(),
 		angle:Vector3 = get_default_angle(object),
 		offset:Vector3 = DRAG_OFFSET + get_drag_offset(object),
 		use_velocity:bool = USE_VELOCITY,
