@@ -73,6 +73,7 @@ enum JAM_RESPONSES {
 	LOWER_DISTANCE = 3,
 }
 
+signal dragging (object:Node3D)
 signal started_dragging (object:Node3D)
 signal stopped_dragging (object:Node3D)
 signal draggable_hovered (object:Node3D)
@@ -403,6 +404,8 @@ func drag_by_setpos(
 	object.global_position = object.global_position.lerp(
 		get_drag_position(), delta * speed
 	)
+	
+	dragging.emit(object)
 
 func drag_by_velocity(
 		delta:float,
@@ -414,6 +417,8 @@ func drag_by_velocity(
 	
 	object.linear_velocity = get_drag_velocity(delta, force, object)
 	object.angular_velocity = Vector3.ZERO
+	
+	dragging.emit(object)
 
 func drag(
 		delta:float,
