@@ -2,6 +2,7 @@ extends Node
 
 var DRAG_TOGGLE := true
 var DRAG_SPEED := 12.0
+var INSTANT_DRAG := false
 var DRAG_OFFSET := Vector3.ZERO
 var DRAG_COOLDOWN := .25
 var DRAGGABLE_METADATA := 'draggable'
@@ -408,9 +409,14 @@ func drag_by_setpos(
 	if not object:
 		return stop_dragging()
 	
-	object.global_position = object.global_position.lerp(
-		get_drag_position(), delta * speed
-	)
+	var target_pos = get_drag_position()
+	
+	if speed < 0 or INSTANT_DRAG:
+		object.global_position = target_pos
+	else:
+		object.global_position = object.global_position.lerp(
+			target_pos, delta * speed
+		)
 	
 	dragging.emit(object)
 
