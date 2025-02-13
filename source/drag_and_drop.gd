@@ -11,13 +11,15 @@ var USE_ZOOM := true
 var ZOOM_MIN := .75
 var ZOOM_MAX := 2.25
 var ZOOM_SPEED := .2
-var ZOOM_START := -1
+var ZOOM_START := -1.0
 # -1 will use distance to object as initial zoom
 
 var USE_STABILISATION := true
 var USE_STARTING_ANGLE := false
 var STABILISATION_SPEED := 5.0
 var STABILISATION_ANGLE := Vector3.ZERO
+var STABILISE_NON_RIGID := false
+var INSTANT_STATICS_STABILISATION := true
 
 var TRACK_HOVERING := true
 
@@ -41,13 +43,13 @@ var WAKE_UP_VELOCITY := Vector3.UP * .35
 
 var ALLOW_THROW := true
 var CHARGE_THROW := true
-var THROW_SPEED_MIN := 0
-var THROW_SPEED_MAX := 8
+var THROW_SPEED_MIN := 0.0
+var THROW_SPEED_MAX := 8.0
 var THROW_CHARGE_TIME := 1.0
 var THROW_WHEN_CHARGED := true
 var THROW_OFFSET := Vector3.UP * .1
 var USE_RANDOM_ANGLE := true
-var ANGULAR_FORCE := 3
+var ANGULAR_FORCE := 3.0
 var DROP_IF_CANT_THROW := true
 
 # Only works when using force
@@ -89,6 +91,7 @@ signal throw_charge_stopped
 signal throw_charge_full
 
 var drag_object:Node3D
+var drag_object_staic:bool
 var drag_hovered:Node3D
 var drag_distance:float
 var drag_angle:Vector3
@@ -124,10 +127,7 @@ func is_object_forcable(object) -> bool:
 	return object is RigidBody3D
 
 func is_object_static(object) -> bool:
-	if not object is RigidBody3D:
-		return true
-	
-	return object.freeze
+	return not object is RigidBody3D or object.freeze
 
 func get_draggable_aimed(
 		raycast:RayCast3D = drag_raycast,
@@ -171,7 +171,10 @@ func get_drag_velocity(
 	return (drag_pos - object.global_position) * delta * force
 
 func get_default_angle(object:Node3D = drag_object) -> Vector3:
-	if USE_STARTING_ANGLE and object:
+	if not object:
+		return STABILISATION_ANGLE
+	
+	if USE_STARTING_ANGLE or is_object_static(object):
 		return object.rotation
 	
 	return STABILISATION_ANGLE
@@ -325,19 +328,23 @@ func set_on_cooldown(seconds:float = DRAG_COOLDOWN) -> float:
 	cooldown_timeset.emit()
 	return seconds
 
-func set_draggable_hovered(new_value:Node3D):
+func set_draggable_hovered(value:Node3D):
 	var old_value = drag_hovered
 	
-	if old_value == new_value:
+	if old_value == value:
 		return
 	
-	drag_hovered = new_value
+	drag_hovered = value
 	
-	if not new_value:
+	if not value:
 		draggable_unhovered.emit(old_value)
 		return
 	
-	draggable_hovered.emit(new_value)
+	draggable_hovered.emit(value)
+
+func set_drag_object_static(value:bool = is_object_static(drag_object)) -> bool:
+	drag_object_staic = value
+	return value
 
 # ACTIONS
 
@@ -362,6 +369,7 @@ func start_dragging(
 	set_drag_offset(offset)
 	set_use_velocity(use_velocity)
 	set_on_cooldown(cooldown)
+	set_drag_object_static()
 	
 	if TRACK_HOVERING:
 		set_draggable_hovered(null)
@@ -437,7 +445,15 @@ func stabilize(
 		angle:Vector3 = drag_angle,
 		object:Node3D = drag_object,
 	):
-	if not object:
+	if( not object
+		or (not object is RigidBody3D and not STABILISE_NON_RIGID)):
+		return
+	
+	if drag_object_staic and INSTANT_STATICS_STABILISATION:
+		speed = -1
+	
+	if speed < 0:
+		object.rotation = angle
 		return
 	
 	object.rotation = object.rotation.lerp(angle, delta * speed)
