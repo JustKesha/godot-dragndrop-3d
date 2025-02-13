@@ -1,11 +1,13 @@
 extends Node
 
+var METADATA := 'draggable'
+var COLLISION_LAYER := 0 # 1-32 NOTE Not bit, value or name
+
 var DRAG_TOGGLE := true
 var DRAG_SPEED := 12.0
 var INSTANT_DRAG := false
 var DRAG_OFFSET := Vector3.ZERO
 var DRAG_COOLDOWN := .25
-var DRAGGABLE_METADATA := 'draggable'
 var ALLOW_INITIAL_OFFSET := true
 
 var USE_ZOOM := true
@@ -121,8 +123,17 @@ func wake_up(object:RigidBody3D):
 	# Changing .sleeping doesnt seem to be enough
 	object.linear_velocity += WAKE_UP_VELOCITY
 
-func is_object_draggable(object) -> bool:
-	return object is Node3D and object.get_meta(DRAGGABLE_METADATA, false)
+func is_object_draggable(object:CollisionObject3D) -> bool:
+	if not object is Node3D:
+		return false
+	
+	if METADATA and not object.get_meta(METADATA, false):
+		return false
+	
+	if COLLISION_LAYER and not object.get_collision_layer_value(COLLISION_LAYER):
+		return false
+	
+	return true
 
 func is_object_forcable(object) -> bool:
 	return object is RigidBody3D
