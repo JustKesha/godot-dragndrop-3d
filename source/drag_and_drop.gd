@@ -1,14 +1,15 @@
 extends Node
 
 var METADATA := 'draggable'
-var COLLISION_LAYER := 0 # 1-32 NOTE Not bit, value or name
+var COLLISION_LAYER := 0 # int 1-32 NOTE This isnt bit, value or name
 
 var DRAG_TOGGLE := true
-var DRAG_SPEED := 12.0
 var INSTANT_DRAG := false
-var DRAG_OFFSET := Vector3.ZERO
+var DRAG_SPEED := 12.0
 var DRAG_COOLDOWN := .25
+var DRAG_OFFSET := Vector3.ZERO
 var ALLOW_INITIAL_OFFSET := true
+var ALLOW_CLIPPING := false
 
 var USE_ZOOM := true
 var ZOOM_MIN := .75
@@ -115,10 +116,8 @@ func get_collision_distance(raycast:RayCast3D = drag_raycast) -> float:
 	
 	return raycast.global_transform.origin.distance_to(raycast.get_collision_point())
 
-func get_drag_distance(raycast:RayCast3D = drag_raycast) -> float:
-	if ZOOM_START <= -1:
-		return get_collision_distance(raycast)
-	return ZOOM_START
+func get_start_distance(raycast:RayCast3D = drag_raycast) -> float:
+	return get_collision_distance(raycast) if ZOOM_START < 0 else ZOOM_START
 
 func wake_up(object:RigidBody3D):
 	# Changing .sleeping doesnt seem to be enough
@@ -232,51 +231,6 @@ func is_in_jam_zone(
 	
 	return object.global_position.distance_to(zone_center) <= zone_radius
 
-func handle_jam(mode:int = JAM_RESPONSE):
-	if not drag_object:
-		return
-	
-	if( mode == JAM_RESPONSES.LOWER_DISTANCE
-		and drag_distance == ZOOM_MIN ):
-		mode = JAM_LOWER_DISTANCE_FAIL
-	
-	match mode:
-		JAM_RESPONSES.LOWER_DISTANCE:
-			set_drag_distance(drag_distance * JAM_LOWER_DISTANCE_MULT)
-		JAM_RESPONSES.STOP_DRAGGING:
-			stop_dragging()
-		JAM_RESPONSES.TELEPORT:
-			drag_object.position = get_drag_position()
-		JAM_RESPONSES.TELEPORT_CLOSE:
-			set_drag_distance(JAM_TELEPORT_CLOSE_DIST)
-			drag_object.position = get_drag_position()
-	
-	drag_suspecting_jam = false
-	
-	jammed.emit()
-
-func suspect_jam():
-	if drag_suspecting_jam:
-		return
-	
-	drag_suspecting_jam = true
-	drag_jam_point = drag_object.global_position
-	drag_jam_timer.wait_time = JAM_MIN_TIME
-	drag_jam_timer.start()
-
-func jam_check():
-	if( not drag_object
-		or drag_suspecting_jam
-		or not drag_use_velocity ):
-		return
-	
-	if not JAM_MIN_DISTANCE:
-		suspect_jam()
-		return
-	
-	if is_jam_distance_reached():
-		suspect_jam()
-
 func get_random_angle(from:float = -1, to:float = 1) -> Vector3:
 	return Vector3(randf_range(from, to), randf_range(from, to), randf_range(from, to))
 
@@ -373,7 +327,7 @@ func set_drag_object_static(value:bool = is_object_static(drag_object)) -> bool:
 func start_dragging(
 		object:Node3D = get_draggable_aimed(),
 		ignore_cooldown:bool = false,
-		distance:float = get_drag_distance(),
+		distance:float = get_start_distance(),
 		angle:Vector3 = get_default_angle(object),
 		offset:Vector3 = DRAG_OFFSET + get_drag_offset(object),
 		use_velocity:bool = should_use_velocity(object),
@@ -400,6 +354,8 @@ func start_dragging(
 		drag_origin_freeze = object.freeze
 		object.freeze = !use_velocity
 	
+	drag_raycast.add_exception(object)
+	
 	started_dragging.emit(drag_object)
 	
 	return true
@@ -414,6 +370,8 @@ func stop_dragging():
 	if drag_object is RigidBody3D:
 		drag_object.freeze = drag_origin_freeze
 		wake_up(drag_object)
+	
+	drag_raycast.remove_exception(drag_object)
 	
 	stopped_dragging.emit(drag_object)
 	
@@ -527,6 +485,60 @@ func stop_throw_charing():
 	
 	throw_charge_stopped.emit()
 
+func handle_jam(mode:int = JAM_RESPONSE):
+	if not drag_object:
+		return
+	
+	if( mode == JAM_RESPONSES.LOWER_DISTANCE
+		and drag_distance == ZOOM_MIN ):
+		mode = JAM_LOWER_DISTANCE_FAIL
+	
+	match mode:
+		JAM_RESPONSES.LOWER_DISTANCE:
+			set_drag_distance(drag_distance * JAM_LOWER_DISTANCE_MULT)
+		JAM_RESPONSES.STOP_DRAGGING:
+			stop_dragging()
+		JAM_RESPONSES.TELEPORT:
+			object.global_position = get_drag_position()
+		JAM_RESPONSES.TELEPORT_CLOSE:
+			set_drag_distance(JAM_TELEPORT_CLOSE_DIST)
+			object.global_position = get_drag_position()
+	
+	drag_suspecting_jam = false
+	
+	jammed.emit()
+
+func suspect_jam():
+	if drag_suspecting_jam:
+		return
+	
+	drag_suspecting_jam = true
+	drag_jam_point = drag_object.global_position
+	drag_jam_timer.wait_time = JAM_MIN_TIME
+	drag_jam_timer.start()
+
+func jam_check():
+	if( not drag_object
+		or drag_suspecting_jam
+		or not drag_use_velocity ):
+		return
+	
+	if not JAM_MIN_DISTANCE:
+		suspect_jam()
+		return
+	
+	if is_jam_distance_reached():
+		suspect_jam()
+
+func prevent_clipping():
+	if not drag_object:
+		return
+	
+	var col_distance = get_collision_distance()
+	
+	if col_distance > 0 and drag_distance > col_distance:
+		drag_distance = col_distance
+
 # CONTROLS
 
 func _ready():
@@ -547,11 +559,16 @@ func _process(_delta:float):
 		update_draggable_hovered()
 
 func _physics_process(delta:float):
+	if not drag_object:
+		return
+	
 	drag(delta)
 	if USE_STABILISATION:
 		stabilize(delta)
 	if TRACK_JAMMING:
 		jam_check()
+	if not ALLOW_CLIPPING:
+		prevent_clipping()
 
 func _unhandled_input(event:InputEvent):
 	var CONTROLS_THROW = CONTROLS.DRAG if SINGLE_ACTION_DRAG_AND_THROW else CONTROLS.THROW
