@@ -93,7 +93,7 @@ var drag_hovered:Node3D
 var drag_distance:float
 var drag_angle:Vector3
 var drag_use_velocity:bool
-var drag_unfreeze_after:bool
+var drag_origin_freeze:bool
 var drag_offset:Vector3
 var drag_on_cooldown:bool
 var drag_jam_point:Vector3
@@ -114,7 +114,7 @@ func get_drag_distance(raycast:RayCast3D = drag_raycast) -> float:
 	return ZOOM_START
 
 func wake_up(object:RigidBody3D):
-	# Changing .sleeping doesnt seem to work
+	# Changing .sleeping doesnt seem to be enough
 	object.linear_velocity += WAKE_UP_VELOCITY
 
 func is_object_draggable(object) -> bool:
@@ -261,8 +261,8 @@ func jam_check():
 	if is_jam_distance_reached():
 		suspect_jam()
 
-func get_random_angle(min:float = -1, max:float = 1) -> Vector3:
-	return Vector3(randf_range(min, max), randf_range(min, max), randf_range(min, max))
+func get_random_angle(from:float = -1, to:float = 1) -> Vector3:
+	return Vector3(randf_range(from, to), randf_range(from, to), randf_range(from, to))
 
 func get_throw_charge_time() -> float:
 	if not throw_charging or not throw_charge_timer:
@@ -292,34 +292,22 @@ func set_drag_distance(distance:float) -> float:
 	drag_distance = clamp(distance, ZOOM_MIN, ZOOM_MAX)
 	return drag_distance
 
-func set_drag_object(object:Node3D) -> Node3D:
+func set_drag_object(object:Node3D):
 	if drag_object:
 		stop_dragging()
 	
 	drag_object = object
-	return drag_object
 
 func set_drag_angle(angle:Vector3 = get_default_angle()) -> Vector3:
 	drag_angle = angle
 	return drag_angle
 
-func set_drag_offset(offset:Vector3) -> Vector3:
+func set_drag_offset(offset:Vector3):
 	drag_offset = offset
-	return drag_offset
 
-func set_use_velocity(
-		use_velocity:bool = USE_VELOCITY,
-		object:Node3D = drag_object
-	) -> bool:
-	var can_use_velocity = is_object_forcable(object)
-	
-	drag_use_velocity = can_use_velocity and use_velocity
-	
-	if object is RigidBody3D:
-		object.freeze = !drag_use_velocity
-		drag_unfreeze_after = !object.freeze
-	
-	return drag_use_velocity
+func set_use_velocity(value:bool = USE_VELOCITY) -> bool:
+	drag_use_velocity = value
+	return value
 
 func set_on_cooldown(seconds:float = DRAG_COOLDOWN) -> float:
 	if not drag_cooldown_timer:
@@ -359,7 +347,7 @@ func start_dragging(
 		distance:float = get_drag_distance(),
 		angle:Vector3 = get_default_angle(object),
 		offset:Vector3 = DRAG_OFFSET + get_drag_offset(object),
-		use_velocity:bool = USE_VELOCITY,
+		use_velocity:bool = USE_VELOCITY and is_object_forcable(object),
 		cooldown:float = DRAG_COOLDOWN,
 	) -> bool:
 	if not object or (drag_on_cooldown and not ignore_cooldown):
@@ -378,6 +366,10 @@ func start_dragging(
 	if TRACK_HOVERING:
 		set_draggable_hovered(null)
 	
+	if object is RigidBody3D:
+		drag_origin_freeze = object.freeze
+		object.freeze = !use_velocity
+	
 	started_dragging.emit(drag_object)
 	
 	return true
@@ -390,7 +382,7 @@ func stop_dragging():
 		drag_object.linear_velocity *= RELEASE_VELOCITY_MULT
 	
 	if drag_object is RigidBody3D:
-		drag_object.freeze = !drag_unfreeze_after
+		drag_object.freeze = drag_origin_freeze
 		wake_up(drag_object)
 	
 	stopped_dragging.emit(drag_object)
