@@ -15,7 +15,7 @@ var ZOOM_MIN := .75
 var ZOOM_MAX := 2.25
 var ZOOM_SPEED := .2
 var ZOOM_START := -1.0
-# -1 will use distance to object as initial zoom
+# Anything less than 0 will use distance to object as initial zoom
 
 var USE_STABILISATION := true
 var USE_STARTING_ANGLE := false
@@ -41,6 +41,7 @@ var SINGLE_ACTION_DRAG_AND_THROW := true
 # for RigidBody objects, to avoid clipping and allow for tossing
 var USE_VELOCITY := true
 var DRAG_FORCE := 350.0
+var FORCE_STATIC_OBJECTS := false
 var RELEASE_VELOCITY_MULT := Vector3.ONE * .8
 var WAKE_UP_VELOCITY := Vector3.UP * .35
 
@@ -301,6 +302,15 @@ func get_throw_speed(
 	
 	return min + charge_time * (max-min) / full_charge_time
 
+func should_use_velocity(object) -> bool:
+	if not USE_VELOCITY or not is_object_forcable(object):
+		return false
+	
+	if is_object_static(object) and not FORCE_STATIC_OBJECTS:
+		return false
+	
+	return true
+
 # SETTERS
 
 func set_drag_distance(distance:float) -> float:
@@ -366,7 +376,7 @@ func start_dragging(
 		distance:float = get_drag_distance(),
 		angle:Vector3 = get_default_angle(object),
 		offset:Vector3 = DRAG_OFFSET + get_drag_offset(object),
-		use_velocity:bool = USE_VELOCITY and is_object_forcable(object),
+		use_velocity:bool = should_use_velocity(object),
 		cooldown:float = DRAG_COOLDOWN,
 	) -> bool:
 	if not object or (drag_on_cooldown and not ignore_cooldown):
