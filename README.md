@@ -16,10 +16,9 @@ This is a powerful and highly customizable script for Godot 4 and higher written
 Here are some of the main features:
 - Smoothly drag and drop 3D objects
 - Zoom in and out on objects
-- Rotate in any directions `Soon`
-- Hold & toggle modes
-- Throwing, tossing and chargeable throws
-- Snap to surfaces `Soon`
+- Rotate them in any directions `Soon`
+- Use hold & toggle modes
+- Throw, toss and charge your throws
 - Set up cooldowns
 
 There's also:
