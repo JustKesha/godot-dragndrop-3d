@@ -49,7 +49,7 @@ var THROW_CHARGE_TIME := 1.0
 var THROW_WHEN_CHARGED := true
 var THROW_OFFSET := Vector3.UP * .1
 var USE_RANDOM_ANGLE := true
-var ANGULAR_FORCE := 3.0
+var ANGULAR_SPEED_MULT := .6
 var DROP_IF_CANT_THROW := true
 
 # Only works when using force
@@ -462,7 +462,7 @@ func throw(
 		object:Node3D = drag_object,
 		speed:float = get_throw_speed(),
 		direction:Vector3 = get_raycast_forward() + THROW_OFFSET,
-		angular_speed:float = ANGULAR_FORCE,
+		angular_speed:float = ANGULAR_SPEED_MULT * speed,
 		angle:Vector3 = get_random_angle() if USE_RANDOM_ANGLE else Vector3.ZERO,
 		was_charging:bool = throw_charging,
 	):
@@ -591,5 +591,5 @@ func _on_jam_timeout():
 
 func _on_throw_fully_charged():
 	throw_charge_full.emit()
-	if THROW_WHEN_CHARGED:
+	if THROW_WHEN_CHARGED and not drag_object_staic:
 		throw()
