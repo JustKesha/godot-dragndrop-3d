@@ -16,6 +16,7 @@ var ZOOM_MIN := .75
 var ZOOM_MAX := 2.25
 var ZOOM_SPEED := .2
 var ZOOM_START := -1.0
+var TELEPORT_ON_START := false
 # Anything less than 0 will use distance to object as initial zoom
 
 var USE_STABILISATION := true
@@ -94,6 +95,7 @@ signal thrown
 signal throw_charge_started
 signal throw_charge_stopped
 signal throw_charge_full
+signal teleported (object:Node3D)
 
 var drag_object:Node3D
 var drag_object_staic:bool
@@ -358,6 +360,9 @@ func start_dragging(
 	
 	started_dragging.emit(drag_object)
 	
+	if TELEPORT_ON_START:
+		teleport()
+	
 	return true
 
 func stop_dragging():
@@ -499,10 +504,10 @@ func handle_jam(mode:int = JAM_RESPONSE):
 		JAM_RESPONSES.STOP_DRAGGING:
 			stop_dragging()
 		JAM_RESPONSES.TELEPORT:
-			object.global_position = get_drag_position()
+			teleport()
 		JAM_RESPONSES.TELEPORT_CLOSE:
 			set_drag_distance(JAM_TELEPORT_CLOSE_DIST)
-			object.global_position = get_drag_position()
+			teleport()
 	
 	drag_suspecting_jam = false
 	
@@ -529,6 +534,10 @@ func jam_check():
 	
 	if is_jam_distance_reached():
 		suspect_jam()
+
+func teleport(object:Node3D = drag_object, to:Vector3 = get_drag_position()):
+	object.global_position = to
+	teleported.emit(object)
 
 func prevent_clipping():
 	if not drag_object:
