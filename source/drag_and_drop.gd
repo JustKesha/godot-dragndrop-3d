@@ -1,74 +1,127 @@
-extends Node
+class_name DragAndDrop3D extends Node
+# WARNING Treat all uppercase variables as consts
+# Dont try to overwrite them at runtime unles you know what youre doing
 
-var METADATA := 'draggable'
-var COLLISION_LAYER := 0 # int 1-32 NOTE This isnt bit, value or name
+@export_group("Draggables")
+# Requires draggable objects to have truthy metadata with chosen name
+# (For example a boolean set to True/On)
+# NOTE Leave an empty string to disable
+@export var METADATA := 'draggable'
+# Requires draggable objects to be in the selecter collision layer
+# NOTE Set 0 to disable
+@export_range(0, 32) var COLLISION_LAYER := 0 # int 1-32 (Not bit or value)
 
-var DRAG_TOGGLE := true
-var INSTANT_DRAG := false
-var DRAG_SPEED := 12.0
-var DRAG_COOLDOWN := .25
-var DRAG_OFFSET := Vector3.ZERO
-var ALLOW_INITIAL_OFFSET := true
-var ALLOW_CLIPPING := false
+@export_group("General")
+# Choose between toggling drag action / holding the drag key down
+@export var DRAG_TOGGLE := true
+# (Timer is started right after picking up a draggable)
+@export var DRAG_COOLDOWN := .25
+# Will offset the draggable from holding position
+@export var DRAG_OFFSET := Vector3.ZERO
+# Allows draggable to keep it's initial offset from the raycast hit point
+@export var ALLOW_INITIAL_OFFSET := true
+# Whether or not to keep track of draggables hovered (needed for some signals)
+@export var TRACK_HOVERING := true
+# If set to false, will use prevent_clipping() to move the object closer to you when facing a wall
+# The downside is, it does not return objects to original distance (zoom) when you back off
+@export var ALLOW_CLIPPING := false
 
-var USE_ZOOM := true
-var ZOOM_MIN := .75
-var ZOOM_MAX := 2.25
-var ZOOM_SPEED := .2
-var ZOOM_START := -1.0
-var TELEPORT_ON_START := false
-# Anything less than 0 will use distance to object as initial zoom
-
-var USE_STABILISATION := true
-var USE_STARTING_ANGLE := false
-var STABILISATION_SPEED := 5.0
-var STABILISATION_ANGLE := Vector3.ZERO
-var STABILISE_NON_RIGID := false
-var INSTANT_STATICS_STABILISATION := true
-
-var TRACK_HOVERING := true
-
-# Values from input map
-const CONTROLS := {
+@export_group("Controls")
+# Will use CONTROLS.DRAG for the DRAG & DROP
+# (or instead for the DRAG & THROW if ALLOW_THROW is enabled)
+@export var SINGLE_ACTION_CONTROLS := true
+@export var CONTROLS := {
+	# Values from input map
 	"DRAG": "drag",
+	"DROP": "drop",
 	"THROW": "throw",
 	"ZOOM_IN": "zoom_in",
 	"ZOOM_OUT": "zoom_out",
 }
 
-# Will use CONTROLS.DRAG action for both drag and throw interactions
-var SINGLE_ACTION_DRAG_AND_THROW := true
+@export_group("Zoom")
+@export var USE_ZOOM := true
+@export var ZOOM_MIN := .75
+@export var ZOOM_MAX := 2.25
+@export var ZOOM_SPEED := .2
+# The distance from raycast start at which to position a newly picked up draggable
+@export var ZOOM_START := -1.0 # Anything < 0 will use distance to object as initial zoom
+# Whether or not to instatly set draggable distance when picked up
+@export var TELEPORT_ON_START := false
 
-# Will use linear velocity (FORCE) instead of position changing (SPEED),
-# for RigidBody objects, to avoid clipping and allow for tossing
-var USE_VELOCITY := true
-var DRAG_FORCE := 350.0
-var FORCE_STATIC_OBJECTS := false
-var RELEASE_VELOCITY_MULT := Vector3.ONE * .8
-var WAKE_UP_VELOCITY := Vector3.UP * .35
+@export_group("Static Drag (Setpos)")
+# This mode uses direct position updates
+# Which can result into objects clipping through other objects
 
-var ALLOW_THROW := true
-var CHARGE_THROW := true
-var THROW_SPEED_MIN := 0.0
-var THROW_SPEED_MAX := 8.0
-var THROW_CHARGE_TIME := 1.0
-var THROW_WHEN_CHARGED := true
-var THROW_OFFSET := Vector3.UP * .1
-var USE_RANDOM_ANGLE := true
-var ANGULAR_SPEED_MULT := .6
-var DROP_IF_CANT_THROW := true
+@export var DRAG_SPEED := 12.0
+# Will ignore DRAG_SPEED and instead update object pos as fast as possible
+@export var INSTANT_DRAG := false
 
-# Only works when using force
-var TRACK_JAMMING := true
-var JAM_RESPONSE := JAM_RESPONSES.LOWER_DISTANCE
-var JAM_MIN_DISTANCE := .25
-var JAM_MIN_TIME := .1
-var JAM_ZONE_RADIUS := .1
+# "Physical Drag"
+@export_group("Rigid Drag (Velocity)")
+# Will use linear velocity (DRAG_FORCE) instead of the Static Drag,
+# NOTE But only if the draggable object is a RigidBody3D
+# Allows for object tossing and gets rid of the clipping issue with Static Drag
+@export var USE_RIGID_DRAG := true
+@export var DRAG_FORCE := 350.0
+@export var FORCE_STATIC_OBJECTS := false
+@export var RELEASE_VELOCITY_MULT := Vector3.ONE * .8
+@export var WAKE_UP_VELOCITY := Vector3.UP * .35
+
+@export_group("Throwing")
+# Allows you to throw rigid objects
+@export var ALLOW_THROW := true
+# True: will slowly build up the power of your throws (THROW_CHARGE_TIME for full THROW_SPEED_MAX)
+# False: will always use THROW_SPEED_MAX
+@export var CHARGE_THROW := true
+@export var THROW_SPEED_MIN := 0.0
+@export var THROW_SPEED_MAX := 8.0
+@export var THROW_CHARGE_TIME := 1.0
+# If true, will automatically throw the object once THROW_SPEED_MAX is reached (for CHARGE_THROW only)
+@export var THROW_WHEN_CHARGED := true
+@export var THROW_OFFSET := Vector3.UP * .1
+@export var USE_RANDOM_ANGLE := true
+@export var ANGULAR_SPEED_MULT := .6
+# If the object is not rigid
+@export var DROP_IF_CANT_THROW := true
+
+@export_group("Angle Stabilisation")
+# Mainly, for the Rigid Drag Mode
+@export var USE_STABILISATION := true
+# Custom stabilisation angle (rotation)
+@export var STABILISATION_ANGLE := Vector3.ZERO
+# Will lock the object to the angle (rotation) it was picked up at
+@export var USE_STARTING_ANGLE := false
+# How fast the object will return to the set angle (rotation)
+@export var STABILISATION_SPEED := 5.0
+# Whether or not to apply angle stabilisation to static objects
+@export var STABILISE_NON_RIGID := false
+# If playing stabilisation to static objects, this will insta rotate them
+@export var INSTANT_STATICS_STABILISATION := true
+
+@export_group("Jam Handling")
+# NOTE Only for the Rigid Drag Mode
+@export var TRACK_JAMMING := true
+# If TRACK_JAMMING is on/true,
+# Will determine the type of response to the draggable objects getting "stuck"
+@export var JAM_RESPONSE := JAM_RESPONSES.LOWER_DISTANCE
+# If at any point object's center is JAM_MIN_DISTANCE+ away from the "drag point"
+# (point to which youre trying to drag the object), jam check will start:
+# 1. Object's position is saved
+# 2. A timer of JAM_MIN_TIME seconds starts
+# 3. Once over, we check how far the object had traveled during that time
+# 4. If it stayed within the JAM_ZONE_RADIUS, then trigger a JAM_RESPONSE
+@export var JAM_MIN_DISTANCE := .25
+# NOTE ^ Basically the breaking distance (between object and where youre trying
+# to drag it) at which JAM_RESPONSE is triggered
+# WARNING ^ Important to adjust JAM_MIN_DISTANCE to scale of your objects
+@export var JAM_MIN_TIME := .1
+@export var JAM_ZONE_RADIUS := .1
 
 # Settings for specific JAM_RESPONSE types
-var JAM_TELEPORT_CLOSE_DIST := -1
-var JAM_LOWER_DISTANCE_MULT := .85
-var JAM_LOWER_DISTANCE_FAIL := JAM_RESPONSES.TELEPORT_CLOSE
+@export var JAM_TELEPORT_CLOSE_DIST := -1
+@export var JAM_LOWER_DISTANCE_MULT := .85
+@export var JAM_LOWER_DISTANCE_FAIL := JAM_RESPONSES.TELEPORT_CLOSE
 
 @onready var drag_raycast:RayCast3D = $"."
 @onready var drag_cooldown_timer:Timer = Timer.new()
@@ -259,7 +312,7 @@ func get_throw_speed(
 	return min + charge_time * (max-min) / full_charge_time
 
 func should_use_velocity(object) -> bool:
-	if not USE_VELOCITY or not is_object_forcable(object):
+	if not USE_RIGID_DRAG or not is_object_forcable(object):
 		return false
 	
 	if is_object_static(object) and not FORCE_STATIC_OBJECTS:
@@ -286,7 +339,7 @@ func set_drag_angle(angle:Vector3 = get_default_angle()) -> Vector3:
 func set_drag_offset(offset:Vector3):
 	drag_offset = offset
 
-func set_use_velocity(value:bool = USE_VELOCITY) -> bool:
+func set_use_velocity(value:bool = USE_RIGID_DRAG) -> bool:
 	drag_use_velocity = value
 	return value
 
@@ -580,7 +633,7 @@ func _physics_process(delta:float):
 		prevent_clipping()
 
 func _unhandled_input(event:InputEvent):
-	var CONTROLS_THROW = CONTROLS.DRAG if SINGLE_ACTION_DRAG_AND_THROW else CONTROLS.THROW
+	var CONTROLS_THROW = CONTROLS.DRAG if SINGLE_ACTION_CONTROLS else CONTROLS.THROW
 	var DRAGGING = drag_object
 	var DRAG_DOWN = event.is_action_pressed(CONTROLS.DRAG)
 	var DRAG_UP = event.is_action_released(CONTROLS.DRAG)
