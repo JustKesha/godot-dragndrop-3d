@@ -41,15 +41,9 @@ Adding to your project:
 1. Download [drag_and_drop.gd](./source/drag_and_drop.gd) and add it to your project
 1. Create a `RayCast3D` node somewhere on your character
 1. Drag and drop the script onto your `RayCast3D` node
-1. Make sure the raycast is always facing the same direction as your character's "face"
-1. Create new actions inside the input map for the drag and drop mechanics<br>
+1. Make sure the `RayCast3D` is always facing the same direction as your character
+1. Create the following input actions - `drag` `drop` `throw` `zoom_in` `zoom_out` in<br>
 Project → Project Settings → Input Map<br>
-
-> [!TIP]
-> You can skip step 5 if you use these action names:
-> `drag` `drop` `throw` `zoom_in` `zoom_out`
-
-6. Pass your actions into<br>
-Your `RayCast3D` → Inspector → RayDragAndDrop3D → Controls
-6. Choose the objects you want to be draggable and add a metadata of type bool named "`draggable`" to each (name can be changed in the inspector) - make sure to toggle it on
-6. Start your game
+(all names and other values can be changed in Inspector)
+1. Choose the objects you want to be draggable and add metadata of type `bool` named "`draggable`" to them, toggle each on
+1. Start your game
