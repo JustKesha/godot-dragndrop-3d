@@ -4,8 +4,7 @@
 
 1. [Overview](#overview-dart)
 1. [Features](#features)
-1. [Showcase](README.md) `Coming`
-1. [Demo](README.md) `Coming`
+1. [Demo](#demo)
 1. [Quick start](#quick-start-ocean)
 
 ## Overview :dart:
@@ -13,19 +12,25 @@
 This is a powerful and highly customizable script for Godot 4 and higher written in GDScript that implements 3D drag and drop mechanics using RayCast3D node
 
 ### Features
-1. Physics based drag & drop
-1. Hold & toggle modes
-1. Chargeable and basic throws
-1. Zoom in and out
-1. Angle stabilisation
+1. **Physics based** drag (2 modes)
+1. **Hold & toggle** modes
+1. **Chargeable** and basic **throws**
+1. **Zoom** in and out
+1. Angle **stabilisation**
+1. **Jam handling** (5 modes)
 
 There's also:
 
 - Support for both **static and rigid** objects
-- **Jam handling** (5 modes)
-- **Single key controls** for all drag, drop and throw actions are possible!
-- **47 parameters** nicely organised right in your inspector (with docstring explanations)
+- **Single key controls** option (for all actions)
+- **47 parameters** nicely organised in inspector tab (with docstring)
 - **12 signals** for you to use in other scripts
+
+### Demo
+
+You can install a demo project from [this repository](https://github.com/JustKesha/godot-dragndrop-demo)
+
+![](https://cdn.discordapp.com/attachments/1229518358022717594/1379718800206860318/ezgif.com-optimize_1.gif?ex=684142c3&is=683ff143&hm=718731ad846f24a569ad41064518ee7e72c826f8bff4377c9394a887b04f7219&)
 
 ## Quick start :ocean:
 
