@@ -1,23 +1,26 @@
 # 🦥 Godot 3D - Drag & Drop
 
+[Overview](#overview-dart) /
+[Features](#features) /
+[Demo](https://github.com/JustKesha/godot-dragndrop-demo) /
+[Quick start](#quick-start-ocean) /
 [Перевести на русский ?](PROCHTI.md)
-
-1. [Overview](#overview-dart)
-1. [Features](#features)
-1. [Demo](#demo)
-1. [Quick start](#quick-start-ocean)
 
 ## Overview :dart:
 
-This is a powerful and highly customizable script for Godot 4 and higher written in GDScript that implements 3D drag and drop mechanics using RayCast3D node
+This is a powerful and highly customizable script for Godot 4 and higher written in GDScript that implements 3D drag and drop mechanics using RayCast3D node, feel free to use it for your projects!
 
 ### Features
-1. **Physics based** drag (2 modes)
-1. **Hold & toggle** modes
-1. **Chargeable** and basic **throws**
-1. **Zoom** in and out
-1. Angle **stabilisation**
-1. **Jam handling** (5 modes)
+1. ___Physics based___ and normal drag
+1. ___Chargeable___ and basic ___throws___
+1. ___Zoom___ in and out
+1. ___Angle stabilisation___
+1. Jam handling (5 modes)
+1. Hold & toggle modes
+
+Here's a preview GIF from the [demo project](https://github.com/JustKesha/godot-dragndrop-demo):
+
+<img alt="Preview GIF" src="https://github.com/JustKesha/godot-dragndrop-demo/blob/main/preview/preview.gif?raw=true" width="400px" />
 
 There's also:
 
@@ -26,16 +29,13 @@ There's also:
 - **47 parameters** nicely organised in inspector tab (with docstring)
 - **12 signals** for you to use in other scripts
 
-### Demo
-
-You can install a demo project from [this repository](https://github.com/JustKesha/godot-dragndrop-demo)
-
-![](https://cdn.discordapp.com/attachments/1229518358022717594/1379718800206860318/ezgif.com-optimize_1.gif?ex=684142c3&is=683ff143&hm=718731ad846f24a569ad41064518ee7e72c826f8bff4377c9394a887b04f7219&)
-
 ## Quick start :ocean:
 
-> [!IMPORTANT]
-> Requires Godot 4 and higher. Tested with 4.5.
+> [!TIP]
+> You can download and try out a demo project from [this repository](https://github.com/JustKesha/godot-dragndrop-demo)
+
+> [!NOTE]
+> Godot 4 & higher is recommended (tested with 4.5)
 
 Adding to your project:
 1. Download [drag_and_drop.gd](./source/drag_and_drop.gd) and add it to your project
