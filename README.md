@@ -20,7 +20,7 @@ This is a powerful and highly customizable script for Godot 4 and higher written
 
 Here's a preview GIF from the [demo project](https://github.com/JustKesha/godot-dragndrop-demo):
 
-<img alt="Preview GIF" src="https://github.com/JustKesha/godot-dragndrop-demo/blob/main/preview/preview.gif?raw=true" width="400px" />
+<img alt="Preview GIF" src="https://media1.tenor.com/m/7aULtCVOahQAAAAd/godot-godot3d.gif" width="500px" />
 
 There's also:
 
