@@ -31,7 +31,7 @@
 
 Вы можете скачать демонстрационный проект из [этого репозитория](https://github.com/JustKesha/godot-dragndrop-demo)
 
-![](https://cdn.discordapp.com/attachments/1229518358022717594/1379718800206860318/ezgif.com-optimize_1.gif?ex=684142c3&is=683ff143&hm=718731ad846f24a569ad41064518ee7e72c826f8bff4377c9394a887b04f7219&)
+![Предпросмотр](https://raw.githubusercontent.com/JustKesha/godot-dragndrop-demo/48e55c8dad1c60f2fe5ee8072d04c9dfb5af00f7/preview/preview.gif)
 
 ## Установка
 
